@@ -1,35 +1,26 @@
 import streamlit as st
 import os
 from file_processor import FileProcessor
-from rag_system import SimpleRAG
+from rag_system_new import SimpleRAG
 import uuid
 
-# Page config
-st.set_page_config(
-    page_title="Cram AI",
-    page_icon="❓",
-    layout="centered"
-)
+st.set_page_config(page_title="Cram AI", layout="centered")
 
-# Initialize RAG system
 @st.cache_resource
 def get_rag_system():
     return SimpleRAG()
 
 rag = get_rag_system()
 
-# Main app
 st.title("Cram AI")
 st.markdown("Upload your study materials and get instant answers")
 
-# File upload
 uploaded_file = st.file_uploader(
     "Upload study materials",
     type=['pdf', 'pptx', 'png', 'jpg', 'jpeg'],
     help="Supported: PDF, PowerPoint, Images"
 )
 
-# Process file
 if uploaded_file is not None:
     st.success(f"Uploaded: {uploaded_file.name}")
     
@@ -37,21 +28,15 @@ if uploaded_file is not None:
         text = FileProcessor.process_file(uploaded_file)
         
         if text != "Unsupported file type" and len(text.strip()) > 0:
-            # Add to RAG system
             doc_id = str(uuid.uuid4())
             rag.add_document(text, doc_id)
-            st.session_state['current_doc'] = doc_id
             st.session_state['processed'] = True
             
-            st.success("File processed successfully!")
-            
-            # Show preview
             with st.expander("Preview extracted text"):
                 st.text_area("Extracted Content", text[:1000] + "..." if len(text) > 1000 else text, height=200)
         else:
-            st.error("Could not extract text from this file. Try a different format.")
+            st.error("Could not extract text from this file.")
 
-# Q&A Section
 if st.session_state.get('processed', False):
     st.divider()
     st.subheader("Ask Questions")
@@ -59,23 +44,15 @@ if st.session_state.get('processed', False):
     question = st.text_input("What would you like to know about your document?")
     
     if question:
-        with st.spinner("Finding answer..."):
-            answer = rag.query(question)
-            st.markdown("### Answer:")
-            st.write(answer)
+        answer = rag.query(question)
+        st.markdown("### Answer:")
+        st.write(answer)
 
-# Instructions
 with st.expander("How to use Cram AI"):
     st.markdown("""
-    1. **Upload** a PDF, PowerPoint, or image of study materials
-    2. **Wait** for processing to complete  
-    3. **Ask questions** about your specific content
-    4. **Test different file types** to see what works best
-
-    **Supported formats:**
-    - PDF documents
-    - PowerPoint (.pptx) presentations
-    - Images with text (PNG, JPG)
-
-    *Cram AI reads your actual files - no more converting between formats!*
+    1. **Upload** a PDF, PowerPoint, or image
+    2. **Wait** for processing
+    3. **Ask questions** about your content
+    
+    **Supported formats:** PDF, PowerPoint, Images
     """)
