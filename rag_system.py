@@ -1,45 +1,48 @@
 import os
 from openai import OpenAI
 import streamlit as st
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class SimpleRAG:
     def __init__(self):
-        # Priority: Streamlit secrets first, then .env file
+        # ONLY use Streamlit secrets in production
         api_key = None
         
-        # Try Streamlit secrets first
+        # Force use of Streamlit secrets (ignore .env completely)
         try:
             if hasattr(st, 'secrets') and 'OPENAI_API_KEY' in st.secrets:
                 api_key = st.secrets['OPENAI_API_KEY']
                 st.success("✅ Using API key from Streamlit secrets")
-        except:
-            pass
+            else:
+                st.error("""
+                ❌ API key not found in Streamlit secrets!
+                
+                Please add your OpenAI API key:
+                1. Go to your app dashboard at share.streamlit.io
+                2. Click '⋮' → 'Settings' → 'Secrets'
+                3. Add: OPENAI_API_KEY = "your-real-key-here"
+                4. Save and refresh this page
+                """)
+                self.client = None
+                return
+        except Exception as e:
+            st.error(f"Error accessing secrets: {str(e)}")
+            self.client = None
+            return
             
-        # Fall back to .env file
-        if not api_key:
-            api_key = os.getenv('OPENAI_API_KEY')
-            if api_key and not api_key.startswith("your_actual"):
-                st.info("ℹ️ Using API key from .env file")
-        
         # Validate the key
-        if not api_key or api_key.startswith("your_actual"):
+        if not api_key or "your_actual" in api_key or "your-real" in api_key:
             st.error("""
-            ❌ OpenAI API key not configured properly.
+            ❌ Invalid API key detected!
             
-            Please make sure you've added your real API key to Streamlit Secrets:
-            1. Go to your app dashboard
-            2. Click '⋮' → 'Settings' → 'Secrets'  
-            3. Add: OPENAI_API_KEY = "your-real-key-here"
-            4. Save and refresh this app
+            Please make sure you've added your REAL OpenAI API key to Streamlit Secrets.
+            The key should start with 'sk-proj-' and not contain placeholder text.
             """)
             self.client = None
             return
             
         self.client = OpenAI(api_key=api_key)
         self.current_document = ""
+        st.success("🔑 API key validated successfully!")
     
     def add_document(self, text, doc_id):
         if text and text != "Unsupported file type":
